@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- iOS мета-теги для работы как приложение -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Рыболов">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a1929">
+<meta name="format-detection" content="telephone=no">
+<title>🎣 Рыболов PRO+ · Кама</title>
+<!-- PWA манифест встроен как data URI -->
+<link rel="manifest" href='data:application/manifest+json,{"name":"Рыболов PRO+ · Кама","short_name":"Рыболов","start_url":"./","display":"standalone","orientation":"any","background_color":"#000814","theme_color":"#0a1929","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iIzBhMTkyOSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTUlIiBmb250LXNpemU9IjEwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+8J+OqDwvdGV4dD48L3N2Zz4=","sizes":"192x192","type":"image/svg+xml"}]}'>
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iIzBhMTkyOSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTUlIiBmb250LXNpemU9IjEwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+8J+OqDwvdGV4dD48L3N2Zz4=">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #000814;
+    color: #e0f7fa;
+    overflow: hidden;
+    /* Safe area для iPhone с "чёлкой" */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    height: 100vh;
+    height: 100dvh; /* динамическая высота для iOS Safari */
+  }
+  header {
+    grid-column: 1 / -1;
+    background: linear-gradient(90deg, #0a1929, #0d2944, #0a1929);
+    padding: 10px 14px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid rgba(0,229,255,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 {
+    font-size: 1em;
+    background: linear-gradient(90deg, #00e5ff, #64ffda);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+  }
+  .header-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+  .btn {
+    background: linear-gradient(135deg, #00e5ff20, #00bfa520);
+    border: 1px solid #00e5ff;
+    color: #e0f7fa;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 38px;
+    font-family: inherit;
+  }
+  .btn:active { background: #00e5ff60; transform: scale(0.96); }
+  .btn.active { background: #00e5ff; color: #000; font-weight: bold; }
+  #map { grid-column: 1; grid-row: 2; height: 100%; background: #051525; position: relative; }
+  .sidebar {
+    grid-column: 2; grid-row: 2;
+    background: linear-gradient(180deg, #0a1929, #000814);
+    overflow-y: auto;
+    border-left: 1px solid rgba(0,229,255,0.2);
+    padding: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #00e5ff40; border-radius: 3px; }
+  .panel {
+    background: rgba(13,35,60,0.6);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .panel h3 {
+    color: #64ffda;
+    font-size: 0.9em;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(100,255,218,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .metric {
+    background: rgba(0,191,165,0.08);
+    border: 1px solid rgba(0,191,165,0.2);
+    border-radius: 6px;
+    padding: 6px;
+    text-align: center;
+  }
+  .metric .v { font-size: 1.2em; font-weight: bold; color: #64ffda; }
+  .metric .l { font-size: 0.65em; color: #80cbc4; margin-top: 2px; }
+  .moon-display { display: flex; align-items: center; gap: 10px; padding: 6px; background: rgba(156,39,176,0.1); border: 1px solid rgba(156,39,176,0.3); border-radius: 6px; }
+  .moon-icon { font-size: 2em; }
+  .moon-info { flex: 1; font-size: 0.8em; line-height: 1.4; }
+  .moon-info strong { color: #ce93d8; }
+  .layer-list { list-style: none; }
+  .layer-list li { display: flex; align-items: center; gap: 6px; padding: 6px; margin: 2px 0; background: rgba(0,229,255,0.05); border-radius: 5px; cursor: pointer; font-size: 0.8em; }
+  .layer-list li:active { background: rgba(0,229,255,0.2); }
+  .layer-list input { accent-color: #00e5ff; width: 18px; height: 18px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .fish-card { background: rgba(255,152,0,0.08); border-left: 3px solid #ff9800; padding: 6px 8px; margin: 4px 0; border-radius: 0 6px 6px 0; font-size: 0.78em; line-height: 1.4; }
+  .fish-card strong { color: #ffb74d; }
+  .bite { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 0.7em; font-weight: bold; margin-left: 4px; }
+  .bite-good { background: #69f0ae30; color: #69f0ae; border: 1px solid #69f0ae; }
+  .bite-ok { background: #ffd54f30; color: #ffd54f; border: 1px solid #ffd54f; }
+  .bite-bad { background: #ff525230; color: #ff5252; border: 1px solid #ff5252; }
+  .legend-bar { display: flex; gap: 2px; height: 12px; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .legend-bar div { flex: 1; }
+  .legend-labels { display: flex; justify-content: space-between; font-size: 0.65em; color: #80cbc4; }
+  .forecast-mini { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+  .fday { background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.15); border-radius: 5px; padding: 4px 2px; text-align: center; font-size: 0.65em; }
+  .fday .ic { font-size: 1.1em; }
+  .fday .t { color: #fff; font-weight: bold; }
+  .fday .d { color: #4dd0e1; font-size: 0.9em; }
+  .leaflet-popup-content-wrapper { background: #0a1929; color: #e0f7fa; border: 1px solid #00e5ff; border-radius: 8px; }
+  .leaflet-popup-tip { background: #0a1929; border: 1px solid #00e5ff; }
+  .leaflet-popup-content { font-size: 12px; line-height: 1.4; margin: 8px 12px; }
+  .leaflet-popup-content strong { color: #64ffda; }
+  .leaflet-popup-content .depth { color: #ffb74d; font-weight: bold; }
+  .custom-marker { background: none; border: none; }
+  .marker-pin {
+    width: 26px; height: 26px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border: 2px solid #fff;
+  }
+  .marker-pin span { transform: rotate(45deg); font-size: 13px; }
+  .pulse-marker { animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,152,0,0.7); }
+    50% { box-shadow: 0 0 0 12px rgba(255,152,0,0); }
+  }
+  .gps-info {
+    position: absolute;
+    bottom: calc(20px + env(safe-area-inset-bottom)); left: 10px;
+    background: rgba(10,25,41,0.95);
+    border: 1px solid #00e5ff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.75em;
+    color: #e0f7fa;
+    z-index: 1000;
+    max-width: 280px;
+    display: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .gps-info.show { display: block; }
+  .gps-info .coord { color: #64ffda; font-family: monospace; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .status-dot.on { background: #69f0ae; box-shadow: 0 0 6px #69f0ae; animation: blink 1.5s infinite; }
+  .status-dot.off { background: #ff5252; }
+  @keyframes blink { 50% { opacity: 0.4; } }
+  .toast {
+    position: fixed;
+    top: calc(70px + env(safe-area-inset-top)); left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10,25,41,0.95);
+    border: 1px solid #00e5ff;
+    color: #e0f7fa;
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    font-size: 0.9em;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    max-width: 90%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; }
+  .install-help {
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom)); right: 20px;
+    background: linear-gradient(135deg, #00e5ff, #00bfa5);
+    color: #000;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 0.85em;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.4);
+    display: none;
+  }
+  .install-help.show { display: block; }
+  /* Мобильная версия */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto 55vh 1fr; }
+    .sidebar { grid-column: 1; grid-row: 3; border-left: none; border-top: 1px solid rgba(0,229,255,0.2); }
+    header h1 { font-size: 0.85em; }
+    .btn { padding: 7px 10px; font-size: 0.75em; min-height: 36px; }
+  }
+  /* iPhone SE и меньше */
+  @media (max-width: 380px) {
+    .btn { padding: 6px 8px; font-size: 0.7em; }
+    .header-actions { gap: 3px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>🎣 РЫБОЛОВ PRO+ · ЭЛЕВАТОРНАЯ ГОРА → 6 КМ</h1>
+    <div class="header-actions">
+      <button class="btn" id="btnGPS">📍 Лодка</button>
+      <button class="btn" id="btnMark">📌 Точка</button>
+      <button class="btn" id="btnTrack">🛰️ Трек</button>
+      <button class="btn" id="btnExport">💾 GPX</button>
+      <button class="btn" id="btnImport">📂</button>
+      <input type="file" id="fileImport" accept=".gpx" style="display:none">
+    </div>
+  </header>
+
+  <div id="map">
+    <div class="gps-info" id="gpsInfo">
+      <div><span class="status-dot off" id="gpsDot"></span><strong>GPS:</strong> <span id="gpsStatus">выключен</span></div>
+      <div>Координаты: <span class="coord" id="gpsCoord">—</span></div>
+      <div>Точность: <span id="gpsAcc">—</span> м · Скорость: <span id="gpsSpeed">—</span> км/ч</div>
+      <div>Точек: <span id="pointsCount">0</span></div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="panel">
+      <h3>🌤️ Сейчас <span id="timeNow" style="font-weight:normal;font-size:0.8em;color:#80cbc4"></span></h3>
+      <div class="metrics">
+        <div class="metric"><div class="v" id="mTemp">—</div><div class="l">Воздух °C</div></div>
+        <div class="metric"><div class="v" id="mWater">—</div><div class="l">Вода °C</div></div>
+        <div class="metric"><div class="v" id="mPress">—</div><div class="l">Давление мм</div></div>
+        <div class="metric"><div class="v" id="mWind">—</div><div class="l">Ветер м/с</div></div>
+        <div class="metric"><div class="v" id="mWave">—</div><div class="l">Волна м</div></div>
+        <div class="metric"><div class="v" id="mBite">—</div><div class="l">Общий клёв</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>🌙 Луна</h3>
+      <div class="moon-display">
+        <div class="moon-icon" id="moonIcon">🌕</div>
+        <div class="moon-info" id="moonInfo">Загрузка...</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>📅 5 дней</h3>
+      <div class="forecast-mini" id="forecast"></div>
+    </div>
+
+    <div class="panel">
+      <h3>🗺️ Слои карты</h3>
+      <ul class="layer-list" id="layers">
+        <li><input type="checkbox" id="lBathy" checked><span class="dot" style="background:#0277bd"></span>Глубины (батиметрия)</li>
+        <li><input type="checkbox" id="lOsmDepth" checked><span class="dot" style="background:#e91e63"></span>Точки глубин (OSM)</li>
+        <li><input type="checkbox" id="lHoles" checked><span class="dot" style="background:#ff5252"></span>Ямы и бровки</li>
+        <li><input type="checkbox" id="lAccess" checked><span class="dot" style="background:#4caf50"></span>Спуск катера</li>
+        <li><input type="checkbox" id="lFish" checked><span class="dot" style="background:#ff9800"></span>Зоны рыбы</li>
+        <li><input type="checkbox" id="lWind" checked><span class="dot" style="background:#ffeb3b"></span>Ветер</li>
+        <li><input type="checkbox" id="lMyPoints" checked><span class="dot" style="background:#e040fb"></span>Мои точки</li>
+        <li><input type="checkbox" id="lTrack"><span class="dot" style="background:#00e5ff"></span>Мой трек</li>
+      </ul>
+      <div style="margin-top:6px;font-size:0.7em;color:#80cbc4;">
+        <div>Шкала глубин:</div>
+        <div class="legend-bar">
+          <div style="background:#81d4fa"></div>
+          <div style="background:#29b6f6"></div>
+          <div style="background:#0288d1"></div>
+          <div style="background:#01579b"></div>
+          <div style="background:#003c5e"></div>
+        </div>
+        <div class="legend-labels"><span>0–2 м</span><span>5 м</span><span>10 м</span><span>15 м</span><span>20+ м</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>🐟 Прогноз по видам</h3>
+      <div id="fishCards"></div>
+    </div>
+
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="install-help" id="installHelp">📱 Установить на iPhone</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ============ ГЕОГРАФИЯ: ЭЛЕВАТОРНАЯ ГОРА → 6 КМ ВВЕРХ ============
+// Элеваторная гора — высокий правый берег Камы в южной части Набережных Челнов
+// Примерные координаты: 55.705, 52.285
+// 6 км вверх по течению (С-В направление): ~55.760, 52.355
+const START_POINT = { name: 'Элеваторная гора', lat: 55.705, lon: 52.285 };
+const END_POINT = { name: '6 км вверх', lat: 55.760, lon: 52.355 };
+const CENTER = [(START_POINT.lat + END_POINT.lat) / 2, (START_POINT.lon + END_POINT.lon) / 2];
+const MAP_BOUNDS = [
+  [55.698, 52.270], // SW (Элеваторная гора + запас)
+  [55.768, 52.365]  // NE (6 км вверх + запас)
+];
+
+// ============ КАРТА ============
+const map = L.map('map', {
+  center: CENTER,
+  zoom: 13,
+  maxBounds: MAP_BOUNDS,
+  minZoom: 12,
+  maxZoom: 18,
+  zoomControl: true
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OSM',
+  maxZoom: 19
+}).addTo(map);
+
+// ============ МЕТКА СТАРТА — ЭЛЕВАТОРНАЯ ГОРА ============
+const startIcon = L.divIcon({
+  className: 'custom-marker',
+  html: `<div style="background:rgba(255,152,0,0.95);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 10px rgba(255,152,0,0.6);border:2px solid #fff">📍 ЭЛЕВАТОРНАЯ ГОРА (старт)</div>`,
+  iconSize: [220, 30], iconAnchor: [110, 15]
+});
+L.marker([START_POINT.lat, START_POINT.lon], {icon: startIcon, interactive: false}).addTo(map);
+
+// Метка конца участка
+const endIcon = L.divIcon({
+  className: 'custom-marker',
+  html: `<div style="background:rgba(0,229,255,0.9);color:#000;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 10px rgba(0,229,255,0.6);border:2px solid #fff">🏁 6 КМ · В СТОРОНУ ИЖЕВСКА</div>`,
+  iconSize: [220, 30], iconAnchor: [110, 15]
+});
+L.marker([END_POINT.lat, END_POINT.lon], {icon: endIcon, interactive: false}).addTo(map);
+
+// Линия маршрута (пунктир от старта до конца)
+L.polyline([
+  [START_POINT.lat, START_POINT.lon],
+  [END_POINT.lat, END_POINT.lon]
+], {
+  color: '#ff9800',
+  weight: 2,
+  opacity: 0.5,
+  dashArray: '8,8'
+}).bindTooltip('Участок 6 км').addTo(map);
+
+// ============ БАТИМЕТРИЯ (6 км участок) ============
+const depthZones = [
+  { depth: '0-2 м', color: '#81d4fa', opacity: 0.4, coords: [
+    [[55.762, 52.295], [55.764, 52.310], [55.760, 52.325], [55.752, 52.335],
+     [55.744, 52.330], [55.736, 52.320], [55.728, 52.310], [55.720, 52.300],
+     [55.712, 52.290], [55.705, 52.280], [55.708, 52.275], [55.715, 52.280],
+     [55.725, 52.285], [55.735, 52.290], [55.745, 52.290], [55.755, 52.293]]
+  ]},
+  { depth: '2-5 м', color: '#29b6f6', opacity: 0.45, coords: [
+    [[55.764, 52.305], [55.766, 52.325], [55.762, 52.345], [55.754, 52.355],
+     [55.746, 52.350], [55.738, 52.340], [55.730, 52.330], [55.722, 52.320],
+     [55.714, 52.310], [55.708, 52.300], [55.712, 52.293], [55.722, 52.297],
+     [55.734, 52.303], [55.747, 52.305], [55.757, 52.305]]
+  ]},
+  { depth: '5-10 м', color: '#0288d1', opacity: 0.5, coords: [
+    [[55.765, 52.320], [55.767, 52.340], [55.762, 52.360], [55.754, 52.365],
+     [55.746, 52.360], [55.738, 52.350], [55.730, 52.340], [55.722, 52.330],
+     [55.715, 52.320], [55.720, 52.313], [55.730, 52.317], [55.742, 52.320],
+     [55.754, 52.320]]
+  ]},
+  { depth: '10-15 м', color: '#01579b', opacity: 0.55, coords: [
+    [[55.764, 52.333], [55.765, 52.350], [55.760, 52.365], [55.752, 52.367],
+     [55.744, 52.363], [55.736, 52.353], [55.728, 52.343], [55.722, 52.333],
+     [55.727, 52.327], [55.737, 52.330], [55.750, 52.333]]
+  ]},
+  { depth: '15-22 м', color: '#003c5e', opacity: 0.65, coords: [
+    [[55.762, 52.343], [55.762, 52.357], [55.757, 52.365], [55.750, 52.365],
+     [55.742, 52.360], [55.734, 52.350], [55.728, 52.340], [55.734, 52.337],
+     [55.744, 52.340], [55.754, 52.343]]
+  ]}
+];
+
+const bathyLayer = L.layerGroup();
+depthZones.forEach(z => {
+  z.coords.forEach(poly => {
+    L.polygon(poly, {
+      color: z.color, weight: 1,
+      fillColor: z.color, fillOpacity: z.opacity
+    }).bindTooltip(z.depth, {sticky: true}).addTo(bathyLayer);
+  });
+});
+bathyLayer.addTo(map);
+
+// ============ ТОЧКИ ГЛУБИН ИЗ OSM ============
+const osmDepthLayer = L.layerGroup();
+async function loadOsmDepths() {
+  const bbox = `${MAP_BOUNDS[0][0]},${MAP_BOUNDS[0][1]},${MAP_BOUNDS[1][0]},${MAP_BOUNDS[1][1]}`;
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["seamark:depth"](${bbox});
+      node["depth"](${bbox});
+      node["depth:water"](${bbox});
+      node["seamark:depth:water"](${bbox});
+    );
+    out body;
+  `;
+  try {
+    const r = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+    });
+    const data = await r.json();
+    data.elements.forEach(el => {
+      const depth = el.tags['seamark:depth'] || el.tags.depth || el.tags['depth:water'] || el.tags['seamark:depth:water'];
+      if (!depth || !el.lat || !el.lon) return;
+      const d = parseFloat(depth);
+      if (isNaN(d)) return;
+      let color = '#81d4fa';
+      if (d > 2) color = '#29b6f6';
+      if (d > 5) color = '#0288d1';
+      if (d > 10) color = '#01579b';
+      if (d > 15) color = '#003c5e';
+      const icon = L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background:${color};color:#fff;padding:2px 5px;border-radius:10px;font-size:10px;font-weight:bold;border:1px solid #fff;white-space:nowrap">${d}м</div>`,
+        iconSize: [30, 16], iconAnchor: [15, 8]
+      });
+      L.marker([el.lat, el.lon], {icon})
+        .bindPopup(`<strong>Точка замера OSM</strong><br><span class="depth">Глубина: ${d} м</span><br><em style="color:#80cbc4">${el.lat.toFixed(5)}, ${el.lon.toFixed(5)}</em>`)
+        .addTo(osmDepthLayer);
+    });
+    if (data.elements.length > 0) showToast(`Загружено ${data.elements.length} точек глубин из OSM`);
+  } catch (e) {
+    console.warn('Overpass API error:', e);
+  }
+}
+osmDepthLayer.addTo(map);
+loadOsmDepths();
+
+// ============ ЯМЫ И БРОВКИ (от Элеваторной горы вверх 6 км) ============
+const spots = [
+  { name: 'Яма у Элеваторной горы', type: 'hole', coords: [55.707, 52.288], depth: '16-20 м',
+    desc: 'Глубокая яма сразу от стартовой точки. Судак, сом, лещ. Классика.',
+    fish: ['судак', 'сом', 'лещ', 'щука'] },
+  { name: 'Бровка правого берега (низ)', type: 'edge', coords: [55.715, 52.298], depth: '6-12 м',
+    desc: 'Свал с 6 на 12 м. Лещ, густера. Фидер.',
+    fish: ['лещ', 'густера', 'судак'] },
+  { name: 'Перекат с ямой', type: 'hole', coords: [55.722, 52.308], depth: '5-12 м',
+    desc: 'Перекат с выходом на яму. Жерех, голавль, судак.',
+    fish: ['жерех', 'голавль', 'судак'] },
+  { name: 'Русловой свал (средний участок)', type: 'edge', coords: [55.730, 52.318], depth: '8-16 м',
+    desc: 'Классический свал. Лещ, судак, берш. Фидер и джиг.',
+    fish: ['лещ', 'судак', 'берш', 'густера'] },
+  { name: 'Затопленный лес', type: 'snag', coords: [55.738, 52.330], depth: '9-14 м',
+    desc: 'Коряжник. Судак, берш, крупный окунь. Джиг, отводной.',
+    fish: ['судак', 'берш', 'окунь'] },
+  { name: 'Обратка у мыса', type: 'backwater', coords: [55.735, 52.325], depth: '4-7 м',
+    desc: 'Зона обратного течения. Язь, голавль, чехонь.',
+    fish: ['язь', 'голавль', 'лещ', 'чехонь'] },
+  { name: 'Глубокий плёс', type: 'hole', coords: [55.745, 52.340], depth: '14-18 м',
+    desc: 'Протяжённый плёс. Судак на джиг, сом на квок.',
+    fish: ['судак', 'сом', 'лещ'] },
+  { name: 'Мелководная коса (верхний участок)', type: 'shallow', coords: [55.752, 52.350], depth: '1-3 м',
+    desc: 'Песчаная коса. Летом щука, окунь. Осенью — судак.',
+    fish: ['щука', 'окунь', 'судак'] },
+  { name: 'Бровка правого берега (верх)', type: 'edge', coords: [55.757, 52.358], depth: '6-12 м',
+    desc: 'Свал с 6 на 12 м. Лещовое место. Фидер.',
+    fish: ['лещ', 'судак', 'густера'] }
+];
+
+const spotsLayer = L.layerGroup();
+const spotIcons = {
+  hole: {color: '#ff5252', emoji: '🕳️'},
+  edge: {color: '#ff9800', emoji: '📐'},
+  snag: {color: '#795548', emoji: '🌳'},
+  shallow: {color: '#ffeb3b', emoji: '🏖️'},
+  backwater: {color: '#00bcd4', emoji: '🌀'},
+  oxbow: {color: '#8bc34a', emoji: '🌿'}
+};
+spots.forEach(s => {
+  const ic = spotIcons[s.type];
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div class="marker-pin pulse-marker" style="background:${ic.color}"><span>${ic.emoji}</span></div>`,
+    iconSize: [26, 26], iconAnchor: [13, 26]
+  });
+  L.marker(s.coords, {icon}).bindPopup(`
+    <strong>${s.name}</strong><br>
+    <span class="depth">Глубина: ${s.depth}</span><br>
+    ${s.desc}<br>
+    <em style="color:#ffb74d">Рыба: ${s.fish.join(', ')}</em>
+  `).addTo(spotsLayer);
+});
+spotsLayer.addTo(map);
+
+// ============ СПУСКИ ДЛЯ КАТЕРА ============
+const accessPoints = [
+  { name: 'Спуск у Элеваторной горы', coords: [55.705, 52.285],
+    desc: 'Стартовая точка. Муниципальный спуск. Бесплатно, парковка.', type: 'ramp' },
+  { name: 'Пристань "Кама"', coords: [55.710, 52.290],
+    desc: 'Бетонная рампа, парковка. Основной выезд.', type: 'ramp' },
+  { name: 'Лодочная станция "Прибрежный"', coords: [55.718, 52.302],
+    desc: 'Песчаный берег, пологий спуск. Для ПВХ и малых катеров.', type: 'beach' },
+  { name: 'База отдыха "Челны-Кама"', coords: [55.728, 52.318],
+    desc: 'Платный спуск, эллинг, заправка, прокат.', type: 'paid' },
+  { name: 'Спуск у п. Замелекеево', coords: [55.740, 52.335],
+    desc: 'Спуск в среднем участке. Хороший подъезд с трассы.', type: 'ramp' },
+  { name: 'Стихийный спуск (левый берег)', coords: [55.735, 52.340],
+    desc: 'Грунтовый подъезд, лесной берег. Нужна высокая посадка.', type: 'wild' },
+  { name: 'Спуск у верхнего участка', coords: [55.755, 52.355],
+    desc: 'Песчаный берег в 6 км от Элеваторной горы. Мало людей.', type: 'wild' }
+];
+
+const accessLayer = L.layerGroup();
+const accessIcons = {
+  ramp: {color: '#4caf50', emoji: '🚢'},
+  beach: {color: '#8bc34a', emoji: '🏖️'},
+  paid: {color: '#ffc107', emoji: '💰'},
+  wild: {color: '#795548', emoji: '🌲'}
+};
+accessPoints.forEach(a => {
+  const ic = accessIcons[a.type];
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div class="marker-pin" style="background:${ic.color}"><span>${ic.emoji}</span></div>`,
+    iconSize: [26, 26], iconAnchor: [13, 26]
+  });
+  L.marker(a.coords, {icon})
+    .bindPopup(`<strong>🚤 ${a.name}</strong><br>${a.desc}`)
+    .addTo(accessLayer);
+});
+accessLayer.addTo(map);
+
+// ============ ДИНАМИЧЕСКИЕ СЛОИ ============
+const fishZonesLayer = L.layerGroup();
+const windLayer = L.layerGroup();
+const myPointsLayer = L.layerGroup();
+const trackLayer = L.layerGroup();
+
+function updateFishZone(windDeg, windSpeed) {
+  fishZonesLayer.clearLayers();
+  if (windSpeed < 1) return;
+  let lat, lng, label;
+  // Река течёт с С-В на Ю-З. Ветер с С → рыба к Ю (к Элеваторной горе). С В → к З (правый берег).
+  if (windDeg >= 315 || windDeg < 45) { lat = 55.710; lng = 52.290; label = '🐟 Рыба у Элеваторной горы (низ)'; }
+  else if (windDeg >= 45 && windDeg < 135) { lat = 55.730; lng = 52.300; label = '🐟 У правого берега'; }
+  else if (windDeg >= 135 && windDeg < 225) { lat = 55.755; lng = 52.355; label = '🐟 Вверх по течению (6 км)'; }
+  else { lat = 55.730; lng = 52.350; label = '🐟 У левого берега (лес)'; }
+  L.circle([lat, lng], {
+    radius: 300 + windSpeed * 30,
+    color: '#ff9800', weight: 2,
+    fillColor: '#ff9800', fillOpacity: 0.2,
+    dashArray: '5,5'
+  }).bindTooltip(label, {sticky: true}).addTo(fishZonesLayer);
+}
+
+function updateWindArrows(windDeg, windSpeed) {
+  windLayer.clearLayers();
+  if (windSpeed < 1) return;
+  const windTo = (windDeg + 180) % 360;
+  const positions = [
+    [55.715, 52.300], [55.725, 52.315], [55.735, 52.330],
+    [55.745, 52.345], [55.755, 52.355], [55.720, 52.330]
+  ];
+  positions.forEach(p => {
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="transform:rotate(${windTo}deg);color:#ffeb3b;font-size:20px;text-shadow:0 0 6px rgba(255,235,59,0.8)">➤</div>`,
+      iconSize: [20, 20], iconAnchor: [10, 10]
+    });
+    L.marker(p, {icon, interactive: false}).addTo(windLayer);
+  });
+}
+fishZonesLayer.addTo(map);
+windLayer.addTo(map);
+myPointsLayer.addTo(map);
+trackLayer.addTo(map);
+
+// ============ УПРАВЛЕНИЕ СЛОЯМИ ============
+const layerMap = {
+  lBathy: bathyLayer, lOsmDepth: osmDepthLayer, lHoles: spotsLayer,
+  lAccess: accessLayer, lFish: fishZonesLayer, lWind: windLayer,
+  lMyPoints: myPointsLayer, lTrack: trackLayer
+};
+Object.keys(layerMap).forEach(id => {
+  document.getElementById(id).addEventListener('change', e => {
+    if (e.target.checked) map.addLayer(layerMap[id]);
+    else map.removeLayer(layerMap[id]);
+  });
+});
+
+// ============ GPS ============
+let watchId = null;
+let myPositionMarker = null;
+let myTrackCoords = [];
+let isTracking = false;
+let myPoints = JSON.parse(localStorage.getItem('fisher_points') || '[]');
+
+myPoints.forEach(p => addPointMarker(p));
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function addPointMarker(p) {
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div class="marker-pin" style="background:#e040fb"><span>📌</span></div>`,
+    iconSize: [26, 26], iconAnchor: [13, 26]
+  });
+  const popup = `
+    <strong>📌 Ваша точка</strong><br>
+    ${p.note ? `<em>${p.note}</em><br>` : ''}
+    <span class="depth">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</span><br>
+    <small style="color:#80cbc4">${new Date(p.time).toLocaleString('ru-RU')}</small>
+    <br><button onclick="deletePoint('${p.id}')" style="margin-top:6px;background:#ff5252;border:none;color:#fff;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px">Удалить</button>
+  `;
+  L.marker([p.lat, p.lng], {icon})
+    .bindPopup(popup)
+    .addTo(myPointsLayer);
+}
+
+window.deletePoint = function(id) {
+  myPoints = myPoints.filter(p => p.id !== id);
+  localStorage.setItem('fisher_points', JSON.stringify(myPoints));
+  myPointsLayer.clearLayers();
+  myPoints.forEach(addPointMarker);
+  document.getElementById('pointsCount').textContent = myPoints.length;
+  showToast('Точка удалена');
+};
+
+document.getElementById('pointsCount').textContent = myPoints.length;
+
+document.getElementById('btnGPS').addEventListener('click', () => {
+  const info = document.getElementById('gpsInfo');
+  info.classList.toggle('show');
+  if (!watchId) startGPS();
+});
+
+function startGPS() {
+  if (!navigator.geolocation) {
+    showToast('GPS не поддерживается');
+    return;
+  }
+  document.getElementById('gpsStatus').textContent = 'поиск...';
+  document.getElementById('gpsDot').className = 'status-dot on';
+  
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      const { latitude, longitude, accuracy, speed } = pos.coords;
+      document.getElementById('gpsCoord').textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      document.getElementById('gpsAcc').textContent = accuracy.toFixed(0);
+      document.getElementById('gpsSpeed').textContent = speed ? (speed * 3.6).toFixed(1) : '0';
+      document.getElementById('gpsStatus').textContent = 'активен';
+      
+      if (myPositionMarker) {
+        myPositionMarker.setLatLng([latitude, longitude]);
+      } else {
+        const icon = L.divIcon({
+          className: 'custom-marker',
+          html: `<div style="width:20px;height:20px;background:#00e5ff;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px #00e5ff,0 0 20px #00e5ff"></div>`,
+          iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+        myPositionMarker = L.marker([latitude, longitude], {icon}).addTo(map);
+        map.setView([latitude, longitude], 16);
+      }
+      
+      if (isTracking) {
+        myTrackCoords.push([latitude, longitude]);
+        trackLayer.clearLayers();
+        L.polyline(myTrackCoords, {color: '#00e5ff', weight: 3, opacity: 0.8}).addTo(trackLayer);
+      }
+    },
+    err => {
+      document.getElementById('gpsStatus').textContent = 'ошибка: ' + err.message;
+      document.getElementById('gpsDot').className = 'status-dot off';
+      showToast('GPS: ' + err.message);
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+  );
+}
+
+document.getElementById('btnMark').addEventListener('click', () => {
+  if (!myPositionMarker) {
+    showToast('Сначала включите GPS');
+    return;
+  }
+  const note = prompt('Заметка к точке (необязательно):', '') || '';
+  const latlng = myPositionMarker.getLatLng();
+  const point = {
+    id: Date.now().toString(),
+    lat: latlng.lat,
+    lng: latlng.lng,
+    note: note,
+    time: Date.now()
+  };
+  myPoints.push(point);
+  localStorage.setItem('fisher_points', JSON.stringify(myPoints));
+  addPointMarker(point);
+  document.getElementById('pointsCount').textContent = myPoints.length;
+  showToast('📌 Точка сохранена');
+});
+
+document.getElementById('btnTrack').addEventListener('click', (e) => {
+  if (!myPositionMarker) {
+    showToast('Сначала включите GPS');
+    return;
+  }
+  isTracking = !isTracking;
+  e.target.classList.toggle('active', isTracking);
+  if (isTracking) {
+    myTrackCoords = [];
+    showToast('🛰️ Запись трека начата');
+  } else {
+    showToast(`🛰️ Трек: ${myTrackCoords.length} точек`);
+  }
+});
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  if (myPoints.length === 0 && myTrackCoords.length === 0) {
+    showToast('Нет данных для экспорта');
+    return;
+  }
+  let gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Рыболов PRO+">
+  <metadata><name>Рыболов · Кама · ${new Date().toLocaleDateString('ru-RU')}</name></metadata>`;
+  
+  myPoints.forEach(p => {
+    gpx += `<wpt lat="${p.lat}" lon="${p.lng}"><time>${new Date(p.time).toISOString()}</time><name>${(p.note || 'Точка').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</name></wpt>`;
+  });
+  
+  if (myTrackCoords.length > 0) {
+    gpx += `<trk><name>Мой трек</name><trkseg>`;
+    myTrackCoords.forEach(c => {
+      gpx += `<trkpt lat="${c[0]}" lon="${c[1]}"></trkpt>`;
+    });
+    gpx += `</trkseg></trk>`;
+  }
+  gpx += `</gpx>`;
+  
+  const blob = new Blob([gpx], {type: 'application/gpx+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fisher_kama_${Date.now()}.gpx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('💾 GPX сохранён. Отправьте в iCloud / Telegram / Почту');
+});
+
+document.getElementById('btnImport').addEventListener('click', () => {
+  document.getElementById('fileImport').click();
+});
+
+document.getElementById('fileImport').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(text, 'application/xml');
+  
+  const wpts = xml.getElementsByTagName('wpt');
+  let count = 0;
+  for (const w of wpts) {
+    const lat = parseFloat(w.getAttribute('lat'));
+    const lon = parseFloat(w.getAttribute('lon'));
+    const name = w.getElementsByTagName('name')[0]?.textContent || '';
+    if (!isNaN(lat) && !isNaN(lon)) {
+      myPoints.push({
+        id: Date.now().toString() + Math.random(),
+        lat, lng: lon, note: name, time: Date.now()
+      });
+      count++;
+    }
+  }
+  
+  const trkpts = xml.getElementsByTagName('trkpt');
+  if (trkpts.length > 0) {
+    myTrackCoords = [];
+    for (const t of trkpts) {
+      const lat = parseFloat(t.getAttribute('lat'));
+      const lon = parseFloat(t.getAttribute('lon'));
+      if (!isNaN(lat) && !isNaN(lon)) myTrackCoords.push([lat, lon]);
+    }
+    trackLayer.clearLayers();
+    L.polyline(myTrackCoords, {color: '#00e5ff', weight: 3}).addTo(trackLayer);
+    document.getElementById('lTrack').checked = true;
+    map.addLayer(trackLayer);
+  }
+  
+  localStorage.setItem('fisher_points', JSON.stringify(myPoints));
+  myPointsLayer.clearLayers();
+  myPoints.forEach(addPointMarker);
+  document.getElementById('pointsCount').textContent = myPoints.length;
+  showToast(`📂 Импортировано: ${count} точек`);
+  e.target.value = '';
+});
+
+// ============ ЛУННЫЕ ФАЗЫ ============
+function getMoonPhase(date = new Date()) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  let y = year, m = month;
+  if (m < 3) { y--; m += 12; }
+  const jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day - 1524.5;
+  const daysSinceNew = jd - 2451550.1;
+  const newMoons = daysSinceNew / 29.530588853;
+  const phase = newMoons - Math.floor(newMoons);
+  const age = phase * 29.53;
+
+  let name, icon, illumination, biteEffect;
+  if (phase < 0.0625 || phase >= 0.9375) {
+    name = 'Новолуние'; icon = '🌑'; illumination = 0;
+    biteEffect = 'Клёв слабый. Хищник активизируется за день до.';
+  } else if (phase < 0.1875) {
+    name = 'Растущий серп'; icon = '🌒'; illumination = phase * 400;
+    biteEffect = 'Клёв растёт. Мирная рыба активна.';
+  } else if (phase < 0.3125) {
+    name = 'Первая четверть'; icon = '🌓'; illumination = 50;
+    biteEffect = 'Активизация хищника. Щука и судак — отлично.';
+  } else if (phase < 0.4375) {
+    name = 'Растущая луна'; icon = '🌔'; illumination = 50 + (phase - 0.3125) * 400;
+    biteEffect = 'Один из лучших периодов.';
+  } else if (phase < 0.5625) {
+    name = 'Полнолуние'; icon = '🌕'; illumination = 100;
+    biteEffect = 'Ночной клёв отличный, днём пассивно.';
+  } else if (phase < 0.6875) {
+    name = 'Убывающая луна'; icon = '🌖'; illumination = 100 - (phase - 0.5625) * 400;
+    biteEffect = 'Клёв падает. Мирная рыба ещё активна.';
+  } else if (phase < 0.8125) {
+    name = 'Последняя четверть'; icon = '🌗'; illumination = 50;
+    biteEffect = 'Средний клёв. Мирная рыба стабильно.';
+  } else {
+    name = 'Убывающий серп'; icon = '🌘'; illumination = 50 - (phase - 0.8125) * 400;
+    biteEffect = 'Клёв затихает.';
+  }
+  return { name, icon, illumination: Math.round(illumination), age: age.toFixed(1), biteEffect };
+}
+
+function renderMoon() {
+  const m = getMoonPhase();
+  document.getElementById('moonIcon').textContent = m.icon;
+  document.getElementById('moonInfo').innerHTML = `
+    <strong>${m.name}</strong><br>
+    Возраст: ${m.age} дн. · Освещённость: ${m.illumination}%<br>
+    <em style="color:#ce93d8">${m.biteEffect}</em>
+  `;
+}
+
+// ============ ПОГОДА + МОРСКОЙ API ============
+const CITY = { lat: 55.732, lon: 52.320 };
+let currentWeather = null;
+
+async function loadWeather() {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${CITY.lat}&longitude=${CITY.lon}`
+    + `&current=temperature_2m,surface_pressure,wind_speed_10m,wind_direction_10m,weather_code`
+    + `&daily=temperature_2m_max,temperature_2m_min,weather_code,surface_pressure_mean,wind_speed_10m_max`
+    + `&hourly=wave_height,sea_surface_temperature`
+    + `&timezone=Europe/Moscow&forecast_days=5`;
+  try {
+    const r = await fetch(url);
+    const data = await r.json();
+    currentWeather = data.current;
+    renderCurrent(data);
+    renderForecast(data.daily);
+    updateFishZone(data.current.wind_direction_10m, data.current.wind_speed_10m);
+    updateWindArrows(data.current.wind_direction_10m, data.current.wind_speed_10m);
+    renderFishCards(data.current);
+  } catch (e) {
+    console.error(e);
+    showToast('Ошибка загрузки погоды');
+  }
+}
+
+function renderCurrent(data) {
+  const c = data.current;
+  document.getElementById('mTemp').textContent = c.temperature_2m.toFixed(1) + '°';
+  const pressMm = (c.surface_pressure * 0.75006).toFixed(0);
+  document.getElementById('mPress').textContent = pressMm;
+  document.getElementById('mWind').textContent = c.wind_speed_10m.toFixed(1);
+  document.getElementById('timeNow').textContent = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+  
+  const now = new Date();
+  const hourlyTimes = data.hourly.time.map(t => new Date(t));
+  let idx = 0;
+  for (let i = 0; i < hourlyTimes.length; i++) {
+    if (hourlyTimes[i] <= now) idx = i;
+  }
+  const waterTemp = data.hourly.sea_surface_temperature?.[idx];
+  const wave = data.hourly.wave_height?.[idx];
+  document.getElementById('mWater').textContent = waterTemp ? waterTemp.toFixed(1) + '°' : '—';
+  document.getElementById('mWave').textContent = wave ? wave.toFixed(2) : '—';
+
+  const press = parseFloat(pressMm);
+  const wind = c.wind_speed_10m;
+  let bite = '—', cls = '';
+  if (press >= 745 && press <= 755 && wind < 7) { bite = '🟢 ОТЛ'; cls = 'bite-good'; }
+  else if (press >= 735 && press <= 760 && wind < 12) { bite = '🟡 СР'; cls = 'bite-ok'; }
+  else { bite = '🔴 СЛ'; cls = 'bite-bad'; }
+  const el = document.getElementById('mBite');
+  el.textContent = bite;
+  el.className = 'v ' + cls;
+}
+
+function renderForecast(d) {
+  const icons = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+  const cont = document.getElementById('forecast');
+  cont.innerHTML = '';
+  for (let i = 0; i < d.time.length; i++) {
+    const date = new Date(d.time[i]);
+    const dayName = date.toLocaleDateString('ru-RU', {weekday:'short'});
+    const tMax = d.temperature_2m_max[i].toFixed(0);
+    const tMin = d.temperature_2m_min[i].toFixed(0);
+    const ic = icons[d.weather_code[i]] || '🌡️';
+    const press = (d.surface_pressure_mean[i] * 0.75006).toFixed(0);
+    const div = document.createElement('div');
+    div.className = 'fday';
+    div.innerHTML = `<div class="d">${dayName}</div><div class="ic">${ic}</div><div class="t">${tMax}°</div><div class="d">${press}мм</div>`;
+    cont.appendChild(div);
+  }
+}
+
+// ============ ПРОГНОЗ ПО ВИДАМ ============
+function renderFishCards(c) {
+  const press = c.surface_pressure * 0.75006;
+  const wind = c.wind_speed_10m;
+  const moon = getMoonPhase();
+
+  const fish = [
+    { name: 'Судак', emoji: '🐟',
+      calc: () => {
+        let s = 50;
+        if (press >= 745 && press <= 755) s += 25;
+        else if (press < 735 || press > 760) s -= 20;
+        if (wind >= 3 && wind <= 8) s += 10;
+        if (wind > 12) s -= 20;
+        if (moon.illumination > 70) s += 10;
+        return s;
+      },
+      tip: 'Джиг на бровках и ямах 10-18 м.' },
+    { name: 'Лещ', emoji: '🐠',
+      calc: () => {
+        let s = 50;
+        if (press >= 748 && press <= 758) s += 30;
+        else if (press < 740) s -= 25;
+        if (wind < 5) s += 10;
+        if (wind > 10) s -= 15;
+        return s;
+      },
+      tip: 'Фидер на бровках 6-12 м.' },
+    { name: 'Щука', emoji: '🦈',
+      calc: () => {
+        let s = 50;
+        if (press >= 740 && press <= 755) s += 20;
+        if (wind >= 2 && wind <= 7) s += 15;
+        if (wind > 12) s -= 20;
+        return s;
+      },
+      tip: 'Воблеры у кос и затопленного леса.' },
+    { name: 'Сом', emoji: '🐋',
+      calc: () => {
+        let s = 50;
+        if (press >= 745 && press <= 755) s += 20;
+        if (c.temperature_2m > 15) s += 20; else s -= 20;
+        if (wind < 5) s += 10;
+        return s;
+      },
+      tip: 'Донные снасти в ямах 15+ м. Ночью.' },
+    { name: 'Окунь', emoji: '🐟',
+      calc: () => {
+        let s = 50;
+        if (press >= 745 && press <= 755) s += 20;
+        if (wind >= 2 && wind <= 8) s += 15;
+        if (wind > 10) s -= 15;
+        return s;
+      },
+      tip: 'Микроджиг у бровок.' }
+  ];
+
+  const cont = document.getElementById('fishCards');
+  cont.innerHTML = '';
+  fish.forEach(f => {
+    const score = Math.max(0, Math.min(100, f.calc()));
+    let biteCls, biteText;
+    if (score >= 75) { biteCls = 'bite-good'; biteText = 'ОТЛИЧНО'; }
+    else if (score >= 50) { biteCls = 'bite-ok'; biteText = 'СРЕДНЕ'; }
+    else { biteCls = 'bite-bad'; biteText = 'СЛАБО'; }
+    const card = document.createElement('div');
+    card.className = 'fish-card';
+    card.innerHTML = `
+      <strong>${f.emoji} ${f.name}</strong>
+      <span class="bite ${biteCls}">${biteText}</span>
+      <div style="margin-top:3px;color:#80cbc4">${f.tip}</div>
+    `;
+    cont.appendChild(card);
+  });
+}
+
+// ============ МАСШТАБ ============
+L.control.scale({metric: true, imperial: false, position: 'bottomright'}).addTo(map);
+
+// ============ УСТАНОВКА НА IPHONE ============
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function showInstallHelp() {
+  if (isStandalone()) return;
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS/.test(ua);
+  
+  if (isIOS && isSafari) {
+    const help = document.getElementById('installHelp');
+    help.classList.add('show');
+    help.onclick = () => {
+      alert('📱 Как установить на iPhone:\n\n1. Нажмите кнопку "Поделиться" внизу экрана (квадрат со стрелкой вверх)\n2. Прокрутите вниз и выберите "На экран «Домой»"\n3. Нажмите "Добавить"\n\nГотово! Приложение появится как обычное, с иконкой 🎣');
+    };
+    setTimeout(() => help.classList.remove('show'), 15000);
+  }
+}
+
+// Показать подсказку через 3 секунды после загрузки
+setTimeout(showInstallHelp, 3000);
+
+// ============ ЗАПУСК ============
+renderMoon();
+loadWeather();
+setInterval(loadWeather, 600000);
+
+// Предотвращение случайного зума на iOS
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
+</script>
+
+</body>
+</html>
